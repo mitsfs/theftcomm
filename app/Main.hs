@@ -1,26 +1,20 @@
 module Main where
 
-import Options.Applicative
-import Control.Monad
+import           Control.Monad       (join)
+import           Options.Applicative
 
-import Lib
-
-validate' :: String -> IO ()
-validate' = putStrLn
-generate' :: String -> IO ()
-generate' = error "Not implemented"
-summary' :: String -> IO ()
-summary' = error "Not implemented"
+import qualified Mitsfs.Theftcomm    as Theftcomm
 
 validate :: Parser (IO ())
-validate = validate' <$> argument str idm
+validate = Theftcomm.validate <$> argument str idm
 
-generate :: Parser ( IO () )
-generate = generate' <$> argument str idm
+generate :: Parser (IO ())
+generate = Theftcomm.generate <$> argument str idm
 
-summary :: Parser ( IO () )
-summary = summary' <$> argument str idm
+summary :: Parser (IO ())
+summary = Theftcomm.summary <$> argument str idm
 
+validateDesc, generateDesc, summaryDesc :: String
 validateDesc = "Validates iCalendar data for MITSFS formatting"
 generateDesc = "Generates keyholder stats for a date"
 summaryDesc = "Generates keyholder stats summary for a date range"

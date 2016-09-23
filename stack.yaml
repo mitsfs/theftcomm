@@ -15,7 +15,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-6.11
+resolver: lts-7.0
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -37,10 +37,13 @@ resolver: lts-6.11
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
+- location: 'iCalendar'
+  extra-dep: true
+
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps: [
-  iCalendar-0.4.0.3,
+#  iCalendar-0.5.0.0,
   mime-0.4.0.2
   ]
 
