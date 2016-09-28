@@ -24,6 +24,7 @@ library
                      , bytestring
                      , containers
                      , data-default
+                     , HaskellNet
                      , lens
                      , lens-datetime
                      , text

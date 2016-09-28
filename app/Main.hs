@@ -1,33 +1,23 @@
 module Main where
 
 import           Control.Monad       (join)
-import           Data.Char           (isDigit)
-import           Data.List           (span)
-import           Data.Time           (Day, fromGregorianValid, getCurrentTime,
-                                      getCurrentTimeZone, localDay,
+import           Data.Time           (Day, defaultTimeLocale, getCurrentTime,
+                                      getCurrentTimeZone, localDay, parseTimeM,
                                       utcToLocalTime)
 import           Options.Applicative
 
 import qualified Mitsfs.Theftcomm    as Theftcomm
 
 parseDay :: ReadM Day
-parseDay = eitherReader f
- where
-   dateError d = "Unable to parse date '" ++ d ++ "' must be in format YYYY-MM-DD"
-   takeDigits xs = do
-     (ds, ys) <- pure $ span isDigit (dropWhile (== '-') xs)
-     if null ds then Left (dateError xs) else Right ()
-     pure (read ds, ys)
-   f ws = do
-     (year, xs) <- takeDigits ws
-     (month, ys) <- takeDigits xs
-     (day, zs) <- takeDigits ys
-     if null zs then Right () else Left (dateError ws)
-     maybe (Left (dateError ws)) Right $ fromGregorianValid year month day
+parseDay = let
+  f ws = maybe (Left ("Unable to parse date '" ++ ws ++ "' must be in format YYYY-MM-DD"))
+    Right $ parseTimeM True defaultTimeLocale "%F" ws
+  in eitherReader f
 
 theftcommOptions :: Day -> Parser Theftcomm.TheftcommConfig
 theftcommOptions today = Theftcomm.TheftcommConfig <$>
   option parseDay (long "date" <> short 'd' <> metavar "DATE" <> help "date to validate on" <> value today ) <*>
+  strOption (long "door" <> metavar "DOOR_PATH" <> help "path to door.log file" <> value "/mit/mitsfs/ookcomm/door-sensor/logs/w20-473.log") <*>
   strOption (long "keyholders" <> metavar "KEYHOLDERS_PATH" <> help "path to Keyholder.json file" <> value "/mit/mitsfs/tif/keyholders.json") <*>
   strOption (long "ical" <> metavar "ICAL_PATH" <> help "path to ICalendar Folder" <> value "/mit/mitsfs/tif/calendar_logs") <*>
   strOption (long "hours" <> metavar "HOURS_PATH" <> help "path to daily hour files" <> value "/mit/mitsfs/tif/daily_hour_data") <*>
