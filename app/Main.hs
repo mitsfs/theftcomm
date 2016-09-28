@@ -3,7 +3,9 @@ module Main where
 import           Control.Monad       (join)
 import           Data.Char           (isDigit)
 import           Data.List           (span)
-import           Data.Time           (Day, fromGregorian)
+import           Data.Time           (Day, fromGregorianValid, getCurrentTime,
+                                      getCurrentTimeZone, localDay,
+                                      utcToLocalTime)
 import           Options.Applicative
 
 import qualified Mitsfs.Theftcomm    as Theftcomm
@@ -11,36 +13,54 @@ import qualified Mitsfs.Theftcomm    as Theftcomm
 parseDay :: ReadM Day
 parseDay = eitherReader f
  where
-   f s = let
-     (year, xs) = span isDigit s
-     (month, ys) = span isDigit (tail xs)
-     day = tail ys
-     in Right $ fromGregorian (read year) (read month) (read day)
+   dateError d = "Unable to parse date '" ++ d ++ "' must be in format YYYY-MM-DD"
+   takeDigits xs = do
+     (ds, ys) <- pure $ span isDigit (dropWhile (== '-') xs)
+     if null ds then Left (dateError xs) else Right ()
+     pure (read ds, ys)
+   f ws = do
+     (year, xs) <- takeDigits ws
+     (month, ys) <- takeDigits xs
+     (day, zs) <- takeDigits ys
+     if null zs then Right () else Left (dateError ws)
+     maybe (Left (dateError ws)) Right $ fromGregorianValid year month day
 
-validate :: Parser (IO ())
-validate = Theftcomm.validate <$>
-  optional (option auto (long "date" <> short 'd' <> metavar "Date" <> help "date to validate on" )) <*>
-  argument str (metavar "KEYHOLDERS" <> help "path to Keyholder.json file") <*>
-  argument str (metavar "ICAL" <> help "path to ICalendar File")
+theftcommOptions :: Day -> Parser Theftcomm.TheftcommConfig
+theftcommOptions today = Theftcomm.TheftcommConfig <$>
+  option parseDay (long "date" <> short 'd' <> metavar "DATE" <> help "date to validate on" <> value today ) <*>
+  strOption (long "keyholders" <> metavar "KEYHOLDERS_PATH" <> help "path to Keyholder.json file" <> value "/mit/mitsfs/tif/keyholders.json") <*>
+  strOption (long "ical" <> metavar "ICAL_PATH" <> help "path to ICalendar Folder" <> value "/mit/mitsfs/tif/calendar_logs") <*>
+  strOption (long "hours" <> metavar "HOURS_PATH" <> help "path to daily hour files" <> value "/mit/mitsfs/tif/daily_hour_data") <*>
+  strOption (long "from" <> metavar "FROM_EMAIL" <> help "From Email" <> value "theftcomm@mit.edu") <*>
+  strOption (long "theftcomm-email" <> metavar "THEFTCOMM_EMAIL" <> help "Theftcomm Email" <> value "theftcomm@mit.edu") <*>
+  strOption (long "keyholders-email" <> metavar "KEYHOLDERS_EMAIL" <> help "Keyholder Email" <> value "keyholders@mit.edu") <*>
+  strOption (long "star-chamber-email" <> metavar "STAR_CHAMBER_EMAIL" <> help "Star Chamber Email" <> value "star-chamber@mit.edu") <*>
+  switch (long "email" <> help "Should email output rather than print")
 
-generate :: Parser (IO ())
-generate = Theftcomm.generate <$> argument str idm
+validate :: Day -> Parser (IO ())
+validate day = Theftcomm.validate <$> theftcommOptions day
 
-summary :: Parser (IO ())
-summary = Theftcomm.summary <$> argument str idm
+generate :: Day -> Parser (IO ())
+generate day = Theftcomm.generate <$> theftcommOptions day
+
+summary :: Day -> Parser (IO ())
+summary day = Theftcomm.summary <$> theftcommOptions day
 
 validateDesc, generateDesc, summaryDesc :: String
 validateDesc = "Validates iCalendar data for MITSFS formatting"
 generateDesc = "Generates keyholder stats for a date"
 summaryDesc = "Generates keyholder stats summary for a date range"
 
-opts :: Parser (IO ())
-opts = hsubparser
-  (  command "validate" (info validate ( progDesc validateDesc))
-  <> command "generate" (info generate ( progDesc generateDesc))
-  <> command "summary"  (info summary  ( progDesc summaryDesc ))
+opts :: Day -> Parser (IO ())
+opts day = hsubparser
+  (  command "validate" (info (validate day) ( progDesc validateDesc))
+  <> command "generate" (info (generate day) ( progDesc generateDesc))
+  <> command "summary"  (info (summary day)  ( progDesc summaryDesc ))
   )
 main :: IO ()
-main = join $ customExecParser (prefs showHelpOnError) (info (helper <*> opts) ( fullDesc
+main = do
+  tz <- getCurrentTimeZone
+  today <- localDay . utcToLocalTime tz <$> getCurrentTime
+  join $ customExecParser (prefs showHelpOnError) (info (helper <*> opts today) ( fullDesc
      <> progDesc "Theftcomm tyrannical iron fist utilities"
      <> header "theftcomm - utilities" ))
