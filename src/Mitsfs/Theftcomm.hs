@@ -9,33 +9,23 @@ module Mitsfs.Theftcomm
 import qualified Codec.Compression.GZip     as GZip
 import           Control.Lens               ((&), (-~))
 import qualified Data.Aeson                 as A
+
 import qualified Data.ByteString.Lazy       as BS
+
 import           Data.List
 import qualified Data.Map                   as M
 import           Data.Maybe
 import           Data.Text.Lazy             (Text, pack)
-import           Data.Time                  (Day, defaultTimeLocale, formatTime)
+import           Data.Time                  (Day, UTCTime, defaultTimeLocale,
+                                             formatTime)
 import           Data.Time.Lens             (days, flexD)
 import           Network.HaskellNet.SMTP
 
+import           Mitsfs.Theftcomm.Config
+import           Mitsfs.Theftcomm.DoorLog
 import           Mitsfs.Theftcomm.ICalendar
 import           Mitsfs.Theftcomm.Validate
 
-
-data TheftcommConfig = TheftcommConfig
-  { tcDate                :: Day
-  , tcDoorLogPath         :: String
-  , tcKeyholderPath       :: String
-  , tcICalendarFolder     :: String
-  , tcTheftcommDataFolder :: String
-  , tcFromEmail           :: String
-  , tcTheftcommEmail      :: String
-  , tcKeyholderEmail      :: String
-  , tcStarChamberEmail    :: String
-  , tcShouldEmail         :: Bool
-  } deriving (Show, Eq, Ord)
-
-data TheftcommDest = StarChamber | Theftcomm | Keyholders
 
 outputIO :: TheftcommConfig -> TheftcommDest -> String -> String -> IO ()
 outputIO config dest subject xs
@@ -50,10 +40,6 @@ outputIO config dest subject xs
       in doSMTP server $ \conn ->
         sendPlainTextMail to from subject (pack xs) conn
   | otherwise = putStrLn xs
-
-
-email :: TheftcommConfig -> TheftcommDest -> String -> IO ()
-email config dest = undefined
 
 readFileMGzip :: String -> IO BS.ByteString
 readFileMGzip path = (if ".gz" `isSuffixOf` path then GZip.decompress else id)
@@ -81,13 +67,13 @@ validate :: TheftcommConfig -> IO ()
 validate config = do
   content <- readFileMGzip (tcICalendarFolder config ++ icalFileName (tcDate config))
   keyholders <- decodeKeyholders <$> BS.readFile (tcKeyholderPath config)
-  startDay <- pure $ tcDate config & flexD.days -~ numDaysBack
-  calendar <- pure $ getICalEventsDays content startDay numDays
-  output <- pure $ either id (intercalate "\n\n") $ allFormattedErrors keyholders <$> calendar
+  let startDay = tcDate config & flexD.days -~ numDaysBack
+  let calendar = getICalEventsDays content startDay numDays
+  let output = either id (intercalate "\n\n") $ allFormattedErrors keyholders <$> calendar
   outputIO config Theftcomm "Theftcomm Calendar Validation Errors" output
 
 generate :: TheftcommConfig -> IO ()
 generate = error "Not implemented"
 
-summary  :: TheftcommConfig -> IO ()
+summary :: TheftcommConfig -> IO ()
 summary = error "Not implemented"

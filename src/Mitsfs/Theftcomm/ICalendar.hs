@@ -65,11 +65,11 @@ getICalEvents bs =  toICalEvents <$> getICal bs
 getICalEventsDays :: BS.ByteString -> Day -> Int -> Either String [RItem VEvent]
 getICalEventsDays content day len = do
     vcal <- getICal content
-    tzf <- pure $ vCalendarTZIDToOffsets vcal defaultTZ
+    let tzf = vCalendarTZIDToOffsets vcal defaultTZ
     tzOffset <- case tzf (LocalTime day midnight) of
       Just a  -> Right a
       Nothing -> Left $ concat ["Timezone ",  defaultTZ, " is not in calendar Ical"]
-    utcTime <- pure $ localTimeToUTC tzOffset $ LocalTime day midnight
+    let utcTime = localTimeToUTC tzOffset $ LocalTime day midnight
     pure $ takeDates utcTime (utcTime & flexDT.days +~ len) $ toICalEvents vcal
 
 takeDates :: UTCTime -> UTCTime -> [RItem r] -> [RItem r]

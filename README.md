@@ -7,4 +7,4 @@ Theftcomm Validation and TIF Generation Code
 
 ### Validate ICS file
 
-    stack exec theftcomm validate <path_to_ics_file>
+    stack exec theftcomm validate
