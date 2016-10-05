@@ -7,11 +7,10 @@ module Mitsfs.Theftcomm
   ) where
 
 import qualified Codec.Compression.GZip     as GZip
-import           Control.Lens               ((&), (-~))
+import           Control.Lens               ((&), (+~), (-~))
+import           Control.Monad              (join)
 import qualified Data.Aeson                 as A
-
 import qualified Data.ByteString.Lazy       as BS
-
 import           Data.List
 import qualified Data.Map                   as M
 import           Data.Maybe
@@ -63,14 +62,33 @@ icalFileName = formatTime defaultTimeLocale "/library-schedule-%F.ics.gz"
 summaryFileName :: Day -> String
 summaryFileName = formatTime defaultTimeLocale "/tif-data-%F.csv"
 
+getICalFile :: TheftcommConfig -> Day -> IO BS.ByteString
+getICalFile config d = readFileMGzip (tcICalendarFolder config ++ icalFileName d)
+
+allCanceledHours :: TheftcommConfig -> Int -> IO [String]
+allCanceledHours config offsetDay = do
+  let today = tcDate config
+  content <- getICalFile config today
+  let start = today & flexD.days -~ (7 - offsetDay)
+  let end = today & flexD.days +~ offsetDay
+  newContent <- getICalFile config start
+  let calendar = either error id $ getICalEventsDays content end 1
+  let newCalendar = either error id $ getICalEventsDays newContent end 1
+  let tz = getTZOffset content end
+  pure $ canceledHours tz (toUTC end tz) newCalendar calendar
+
+
 validate :: TheftcommConfig -> IO ()
 validate config = do
-  content <- readFileMGzip (tcICalendarFolder config ++ icalFileName (tcDate config))
+  content <- getICalFile config $ tcDate config
   keyholders <- decodeKeyholders <$> BS.readFile (tcKeyholderPath config)
   let startDay = tcDate config & flexD.days -~ numDaysBack
   let calendar = getICalEventsDays content startDay numDays
-  let output = either id (intercalate "\n\n") $ allFormattedErrors keyholders <$> calendar
+  let tzf = getTZOffset content
+  let output = either id (intercalate "\n\n") $ allFormattedErrors tzf keyholders <$> calendar
   outputIO config Theftcomm "Theftcomm Calendar Validation Errors" output
+  canceled <- mapM (allCanceledHours config) [0..6]
+  outputIO config Keyholders "MITSFS Canceled Hours" (intercalate "\n\n" $ join canceled)
 
 generate :: TheftcommConfig -> IO ()
 generate = error "Not implemented"

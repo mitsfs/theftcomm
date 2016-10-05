@@ -2,7 +2,10 @@
 module Mitsfs.Theftcomm.ICalendar
   ( getICalEvents
   , getICalEventsDays
+  , getTZOffset
   , showRItem
+  , showRItemSummary
+  , toUTC
   ) where
 
 import           Control.Applicative
@@ -10,39 +13,53 @@ import           Control.Lens         ((&), (+~))
 import qualified Data.ByteString.Lazy as BS
 import           Data.Default
 import           Data.List
+import           Data.Maybe
 import           Data.String
-import           Data.Time            (Day, LocalTime (..), UTCTime (..),
-                                       localTimeToUTC, midnight)
+import           Data.Time            (Day, LocalTime (..), TimeZone,
+                                       UTCTime (..), localTimeToUTC, midnight,
+                                       utcToZonedTime)
 import           Data.Time.Lens       (days, flexDT)
 
 import           Text.ICalendar
 
 
-showVEvent :: VEvent -> String
-showVEvent v = summary (veSummary v) ++ startDate (veDTStart v) ++ endDate (veDTEndDuration v)
+showVEvent :: (Day -> TimeZone) -> VEvent -> String
+showVEvent tzf v = summary (veSummary v) ++ startDate (veDTStart v) ++ endDate (veDTEndDuration v)
   where
     summary (Just s) = show (summaryValue s) ++ " hours "
     summary Nothing  = "<Unknown Hours>"
-    startDate (Just d) = showVDateTime (dtStartValue d)
+    startDate (Just d) = showVDateTime tzf (dtStartValue d)
     startDate Nothing  = error "Events should have a start time"
-    endDate (Just (Left (DTEnd d _)))         = " - " ++ showVDateTime d
+    endDate (Just (Left (DTEnd d _)))         = " - " ++ showVDateTime tzf d
     endDate (Just (Right (DurationProp d _))) = " - " ++ show d
     endDate Nothing                           = ""
 
-showRItem :: RItem VEvent -> String
-showRItem r = showVEvent (rItem r)
+showRItem :: (Day -> TimeZone) -> RItem VEvent -> String
+showRItem tzf r = showVEvent tzf (rItem r)
 
-showVDateTime :: VDateTime -> String
-showVDateTime (VDateTime dt)   = showDateTime dt
-showVDateTime (VDate (Date d)) = show d
+showRItemSummary :: RItem VEvent -> String
+showRItemSummary r = summary (veSummary (rItem r))
+  where
+    summary (Just s) = show (summaryValue s) ++ " hours "
+    summary Nothing  = "<Unknown Hours>"
 
-showDateTime :: DateTime -> String
-showDateTime (ZonedDateTime dt tz) = show dt ++ " " ++ show tz
-showDateTime (FloatingDateTime dt) = show dt
-showDateTime (UTCDateTime dt)      = show dt
+showVDateTime :: (Day -> TimeZone) -> VDateTime -> String
+showVDateTime tzf (VDateTime dt) = showDateTime tzf dt
+showVDateTime _ (VDate (Date d)) = show d
+
+showDateTime :: (Day -> TimeZone) -> DateTime -> String
+showDateTime _ (ZonedDateTime dt tz) = show dt ++ " " ++ show tz
+showDateTime _ (FloatingDateTime dt) = show dt
+showDateTime tzf (UTCDateTime dt)     = show $ utcToZonedTime (tzf $ utctDay dt) dt
 
 defaultTZ :: IsString s => s
 defaultTZ = "America/New_York"
+
+getTZOffset :: BS.ByteString -> Day -> TimeZone
+getTZOffset content d = let
+    vcal = either (error "Invalid VCalendar") id $ getICal content
+    lt = LocalTime d midnight
+    in fromMaybe (error "Invalid Date or TimeZone") $ vCalendarTZIDToOffsets vcal defaultTZ lt
 
 getICal :: BS.ByteString -> Either String VCalendar
 getICal content = do
@@ -62,6 +79,9 @@ toICalEvents vcal = vEventList (vCalendarTZIDToOffsets vcal defaultTZ) vcal
 getICalEvents :: BS.ByteString -> Either String [RItem VEvent]
 getICalEvents bs =  toICalEvents <$> getICal bs
 
+toUTC :: Day -> TimeZone -> UTCTime
+toUTC d tz = localTimeToUTC tz (LocalTime d midnight)
+
 getICalEventsDays :: BS.ByteString -> Day -> Int -> Either String [RItem VEvent]
 getICalEventsDays content day len = do
     vcal <- getICal content
@@ -78,12 +98,12 @@ takeDates l u = takeWhileUpperTime u . filterLowerTime l
 filterLowerTime :: UTCTime -> [RItem r] -> [RItem r]
 filterLowerTime t = let
   f (Just end) = end >= t
-  f Nothing    = False
+  f Nothing    = error "No start or end Time"
   date r = rIEndDateUtc r <|> rIStartDateUtc r
   in filter (f . date)
 
 takeWhileUpperTime :: UTCTime -> [RItem r] -> [RItem r]
 takeWhileUpperTime t = let
   f (Just start) = start <= t
-  f Nothing      = False
+  f Nothing      = error "No start time"
   in takeWhile (f . rIStartDateUtc)
