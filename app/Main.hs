@@ -30,20 +30,25 @@ theftcommOptions today = Theftcomm.TheftcommConfig <$>
 validate :: Day -> Parser (IO ())
 validate day = Theftcomm.validate <$> theftcommOptions day
 
+canceled :: Day -> Parser (IO ())
+canceled day = Theftcomm.canceled <$> theftcommOptions day
+
 generate :: Day -> Parser (IO ())
 generate day = Theftcomm.generate <$> theftcommOptions day
 
 summary :: Day -> Parser (IO ())
 summary day = Theftcomm.summary <$> theftcommOptions day
 
-validateDesc, generateDesc, summaryDesc :: String
+validateDesc, canceledDesc, generateDesc, summaryDesc :: String
 validateDesc = "Validates iCalendar data for MITSFS formatting"
+canceledDesc = "Generate emails about canceled or improperly canceled hours"
 generateDesc = "Generates keyholder stats for a date"
 summaryDesc = "Generates keyholder stats summary for a date range"
 
 opts :: Day -> Parser (IO ())
 opts day = hsubparser
   (  command "validate" (info (validate day) ( progDesc validateDesc))
+  <> command "canceled" (info (canceled day) ( progDesc canceledDesc))
   <> command "generate" (info (generate day) ( progDesc generateDesc))
   <> command "summary"  (info (summary day)  ( progDesc summaryDesc ))
   )

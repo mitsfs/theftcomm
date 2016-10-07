@@ -4,7 +4,7 @@
 
 module Mitsfs.Theftcomm.Iterate
   ( iterateTuple
-  , iterate3Tuple, traceU
+  , iterate3Tuple
   ) where
 
 import           Control.Applicative      ((<|>))
@@ -17,7 +17,6 @@ import           Mitsfs.Theftcomm.DoorLog
 import           Text.ICalendar
 
 import Mitsfs.Theftcomm.ICalendar
-import           Debug.Trace
 
 class (Show (a b), Show b) => IterableUTC a b where
   startUTC :: a b -> Maybe UTCTime
@@ -25,7 +24,6 @@ class (Show (a b), Show b) => IterableUTC a b where
   next     :: a b -> Maybe (a b)
   item     :: a b -> Maybe b
   empty    :: a b
-  traceU   :: a b -> a b
   nextDate :: UTCTime -> a b -> Maybe UTCTime
   nextDate startDt xs = join $ (\s -> if startDt < s  then Just s else endUTC xs) <$> startUTC xs
   itemD    :: UTCTime -> a b -> Maybe b
@@ -45,7 +43,6 @@ instance IterableUTC V.Vector DoorLog where
   item xs = xs V.!? 0
   next xs = boolMaybe (null xs) (V.tail xs)
   empty = V.empty
-  traceU = traceShowId
 
 instance IterableUTC [] (RItem VEvent) where
   startUTC xs =  fromMaybe (error "Calendar entry must have start date") . rIStartDateUtc <$> item xs
@@ -53,7 +50,6 @@ instance IterableUTC [] (RItem VEvent) where
   item xs = boolMaybe (null xs) (head xs)
   next xs = boolMaybe (null xs) (tail xs)
   empty = []
-  traceU xs = traceShow (showRItem (const utc) <$> xs) xs
 
 iterateTuple :: (IterableUTC a b, IterableUTC c d) => UTCTime -> UTCTime -> a b -> c d -> [(UTCTime, UTCTime, Maybe b, Maybe d)]
 iterateTuple st end l r = let

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Mitsfs.Theftcomm
   ( validate
+  , canceled
   , generate
   , summary
   , TheftcommConfig(..)
@@ -15,8 +16,7 @@ import           Data.List
 import qualified Data.Map                   as M
 import           Data.Maybe
 import           Data.Text.Lazy             (Text, pack)
-import           Data.Time                  (Day, UTCTime, defaultTimeLocale,
-                                             formatTime)
+import           Data.Time                  (Day, defaultTimeLocale, formatTime)
 import           Data.Time.Lens             (days, flexD)
 import           Network.HaskellNet.SMTP
 
@@ -78,6 +78,11 @@ allCanceledHours config offsetDay = do
   pure $ canceledHours tz (toUTC end tz) newCalendar calendar
 
 
+canceled :: TheftcommConfig -> IO ()
+canceled config = do
+  c <- mapM (allCanceledHours config) [0..6]
+  outputIO config Keyholders "MITSFS Canceled Hours" (intercalate "\n\n" $ join c)
+
 validate :: TheftcommConfig -> IO ()
 validate config = do
   content <- getICalFile config $ tcDate config
@@ -87,8 +92,7 @@ validate config = do
   let tzf = getTZOffset content
   let output = either id (intercalate "\n\n") $ allFormattedErrors tzf keyholders <$> calendar
   outputIO config Theftcomm "Theftcomm Calendar Validation Errors" output
-  canceled <- mapM (allCanceledHours config) [0..6]
-  outputIO config Keyholders "MITSFS Canceled Hours" (intercalate "\n\n" $ join canceled)
+
 
 generate :: TheftcommConfig -> IO ()
 generate = error "Not implemented"

@@ -14,8 +14,6 @@ import           Mitsfs.Theftcomm.ICalendar
 import           Mitsfs.Theftcomm.Iterate
 import           Text.ICalendar
 
-import           Debug.Trace
-
 allFormattedErrors :: (Day -> TimeZone) -> M.Map Text Text -> [RItem VEvent] -> [String]
 allFormattedErrors tzf k vs = catMaybes
           [formattedErrors (badSummaries tzf k vs) "Invalid calendar summaries:"
@@ -64,7 +62,7 @@ canceledHours :: TimeZone
                   -> [String]
 canceledHours tz start old new = let
   end = start & flexDT.days +~ 1
-  xs = iterateTuple start end (traceU old) (traceU new)
+  xs = iterateTuple start end old new
   showS r s e = "Hours " ++ showRItemSummary r ++ " between " ++ show (utcToZonedTime tz s) ++ " and " ++ show (utcToZonedTime tz e)
   canceledStr :: (UTCTime, UTCTime, Maybe (RItem VEvent), Maybe (RItem VEvent)) -> Maybe String
   canceledStr (_, _, Nothing, Nothing) = Nothing -- Don't do anything
