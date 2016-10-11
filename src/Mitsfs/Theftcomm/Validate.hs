@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Mitsfs.Theftcomm.Validate
-  ( allFormattedErrors, canceledHours, summaryHours ) where
+  ( allFormattedErrors, canceledHours, generateHours, summaryHours ) where
 
 import           Control.Lens               ((&), (+~))
 import qualified Data.List                  as L
@@ -72,20 +72,20 @@ canceledHours tz start old new = let
     (_, Canceled k) -> Just $ showS k s e ++ " are cancelled. Please munch."
   in mapMaybe canceledStr xs
 
-summaryHours :: TimeZone
+generateHours :: TimeZone
                   ->  UTCTime -- Start Time
                   -> [RItem VEvent] -- ^ Last weeks events
                   -> [RItem VEvent] -- ^ This weeks events
                   -> V.Vector DoorLog -- ^ DoorLog
                   -> [TifEntry TifLog]
-summaryHours tz start old new doorLog = let
+generateHours tz start old new doorLog = let
   end = start & flexDT.days +~ 1
   xs = iterate3Tuple start end old new doorLog
-  summary :: (UTCTime, UTCTime, Maybe (RItem VEvent), Maybe (RItem VEvent), Maybe DoorLog) -> Maybe (M.Map Keyholder TifLog)
+  summary :: (UTCTime, UTCTime, Maybe (RItem VEvent), Maybe (RItem VEvent), Maybe DoorLog) -> Maybe (TifEntry TifLog)
   summary (_, _ , _, _, Nothing) = error "When generating summary should have a door log"
   summary (s, e, a, b, Just l) = let
     len = fromRational $ toRational (diffUTCTime e s) / 3600
-    toT k e = Just $ M.singleton k e
+    toT k e = Just $ TifEntry k e
     in case (toHours a, toHours b, doorState l) of
       (_, _, Unknown) -> Nothing
       (Unscheduled, Unscheduled, _) -> Nothing
@@ -105,4 +105,9 @@ summaryHours tz start old new doorLog = let
       (Canceled k, Unscheduled, Open) -> Nothing
       (Canceled _, Canceled k, Closed) -> toT k $ mempty {rawScheduledCanceled = len}
       (Canceled _, Canceled k, Open) -> toT k $ mempty {rawScheduledHeld = len}
-  in uncurry TifEntry <$> M.toAscList (M.unionsWith mappend $ mapMaybe summary xs)
+  in tifConcat $ mapMaybe summary xs
+
+summaryHours :: [TifEntry TifLog] -> [TifEntry TifLogSummary]
+summaryHours xs = let
+  toS (TifEntry k v) = TifEntry k (rawToSummary v)
+  in toS <$> tifConcat xs

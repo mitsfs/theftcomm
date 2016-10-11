@@ -7,10 +7,14 @@ module Mitsfs.Theftcomm.Tif
   , Keyholder(..)
   , TifEntry(..)
   , TifLog(..)
+  , TifLogSummary(..)
   , toHours
+  , tifConcat
+  , rawToSummary
   ) where
 
 import           Data.Csv
+import qualified Data.Map       as M
 import           Data.Maybe
 import           Data.Text.Lazy
 import           GHC.Generics   (Generic)
@@ -27,13 +31,18 @@ instance ToField Keyholder where
 
 data TifEntry a = TifEntry Keyholder a deriving (Show, Eq, Ord, Generic)
 instance FromNamedRecord a => FromNamedRecord (TifEntry a) where
-    parseNamedRecord m = TifEntry <$> m .: "keyholder" <*> parseNamedRecord m
+  parseNamedRecord m = TifEntry <$> m .: "keyholder" <*> parseNamedRecord m
 instance ToNamedRecord a => ToNamedRecord (TifEntry a) where
-    toNamedRecord (TifEntry keyholder tif) = mappend
-      (namedRecord ["keyholder" .= keyholder])
-      (toNamedRecord tif)
+  toNamedRecord (TifEntry keyholder tif) = mappend
+    (namedRecord ["keyholder" .= keyholder])
+    (toNamedRecord tif)
 instance DefaultOrdered a => DefaultOrdered (TifEntry a) where
   headerOrder (TifEntry _ v) = mappend (header ["keyholder"]) (headerOrder v)
+
+tifConcat :: Monoid a => [TifEntry a] -> [TifEntry a]
+tifConcat xs = let
+  toMap (TifEntry k v) = M.singleton k v
+  in uncurry TifEntry <$> M.toAscList (M.unionsWith mappend (toMap <$> xs))
 
 data Hours = Scheduled Keyholder
   | Canceled Keyholder

@@ -12,18 +12,21 @@ import           Control.Lens               ((&), (+~), (-~))
 import           Control.Monad              (join)
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Lazy       as BS
-import           Data.Csv                   (encodeDefaultOrderedByName)
+import           Data.Csv                   (decodeByName,
+                                             encodeDefaultOrderedByName)
 import           Data.List
 import qualified Data.Map                   as M
 import           Data.Maybe
 import           Data.Text.Lazy             (Text, pack)
 import           Data.Time                  (Day, defaultTimeLocale, formatTime)
-import           Data.Time.Lens             (days, flexD)
+import           Data.Time.Lens             (days, flexD, months)
+import qualified Data.Vector                as V
 import           Network.HaskellNet.SMTP
 
 import           Mitsfs.Theftcomm.Config
 import           Mitsfs.Theftcomm.DoorLog
 import           Mitsfs.Theftcomm.ICalendar
+import           Mitsfs.Theftcomm.Tif
 import           Mitsfs.Theftcomm.Validate
 
 
@@ -60,11 +63,19 @@ decodeKeyholders bs = fromMaybe (error "Couldn't decode Keyholders file") (A.dec
 icalFileName :: Day -> String
 icalFileName = formatTime defaultTimeLocale "/library-schedule-%F.ics.gz"
 
+dataFileName :: Day -> String
+dataFileName = formatTime defaultTimeLocale "/raw/tif-raw-data-%F.csv"
+
 summaryFileName :: Day -> String
-summaryFileName = formatTime defaultTimeLocale "/tif-data-%F.csv"
+summaryFileName = formatTime defaultTimeLocale "/tif-summary-%F.csv"
 
 getICalFile :: TheftcommConfig -> Day -> IO BS.ByteString
 getICalFile config d = readFileMGzip (tcICalendarFolder config ++ icalFileName d)
+
+getSummaryFile :: TheftcommConfig -> Day -> IO [TifEntry TifLog]
+getSummaryFile config d = do
+  contents <- BS.readFile (tcTheftcommDataFolder config ++ dataFileName d)
+  either error (pure . V.toList . snd) $ decodeByName contents
 
 allCanceledHours :: TheftcommConfig -> Int -> IO [String]
 allCanceledHours config offsetDay = do
@@ -97,17 +108,26 @@ validate config = do
 generate :: TheftcommConfig -> IO ()
 generate config = do
   let today = tcDate config
+      start = today & flexD.days -~ 7
   content <- getICalFile config today
-  let start = today & flexD.days -~ 7
   newContent <- getICalFile config start
   let calendar = either error id $ getICalEventsDays content today 1
-  let newCalendar = either error id $ getICalEventsDays newContent today 1
-  let tz = getTZOffset content today
+      newCalendar = either error id $ getICalEventsDays newContent today 1
+      tz = getTZOffset content today
   doorLog <- getDoorLog config
-  let tifEntry = summaryHours tz (toUTC today tz) newCalendar calendar doorLog
-  let csv = encodeDefaultOrderedByName tifEntry
-  let path = tcTheftcommDataFolder config ++ summaryFileName today
+  let tifEntry = generateHours tz (toUTC today tz) newCalendar calendar doorLog
+      csv = encodeDefaultOrderedByName tifEntry
+      path = tcTheftcommDataFolder config ++ dataFileName today
   BS.writeFile path csv
 
 summary :: TheftcommConfig -> IO ()
-summary = error "Not implemented"
+summary config = do
+  let today = tcDate config
+      test = "dfdf"
+      start = today & flexD.months -~ 1
+  entries <- mapM (getSummaryFile config) [start .. today]
+  let csv = encodeDefaultOrderedByName $ summaryHours (join entries)
+      path = tcTheftcommDataFolder config ++ summaryFileName today
+      output = "Summary data is located on AFS at " ++ show path
+  BS.writeFile path csv
+  outputIO config StarChamber "Theftcomm Summary Data Generated" output
