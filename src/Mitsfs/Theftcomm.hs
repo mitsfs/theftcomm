@@ -12,6 +12,7 @@ import           Control.Lens               ((&), (+~), (-~))
 import           Control.Monad              (join)
 import qualified Data.Aeson                 as A
 import qualified Data.ByteString.Lazy       as BS
+import           Data.Csv                   (encodeDefaultOrderedByName)
 import           Data.List
 import qualified Data.Map                   as M
 import           Data.Maybe
@@ -93,9 +94,20 @@ validate config = do
   let output = either id (intercalate "\n\n") $ allFormattedErrors tzf keyholders <$> calendar
   outputIO config Theftcomm "Theftcomm Calendar Validation Errors" output
 
-
 generate :: TheftcommConfig -> IO ()
-generate = error "Not implemented"
+generate config = do
+  let today = tcDate config
+  content <- getICalFile config today
+  let start = today & flexD.days -~ 7
+  newContent <- getICalFile config start
+  let calendar = either error id $ getICalEventsDays content today 1
+  let newCalendar = either error id $ getICalEventsDays newContent today 1
+  let tz = getTZOffset content today
+  doorLog <- getDoorLog config
+  let tifEntry = summaryHours tz (toUTC today tz) newCalendar calendar doorLog
+  let csv = encodeDefaultOrderedByName tifEntry
+  let path = tcTheftcommDataFolder config ++ summaryFileName today
+  BS.writeFile path csv
 
 summary :: TheftcommConfig -> IO ()
 summary = error "Not implemented"

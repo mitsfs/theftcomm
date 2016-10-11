@@ -20,6 +20,7 @@ library
                      , Mitsfs.Theftcomm.DoorLog
                      , Mitsfs.Theftcomm.ICalendar
                      , Mitsfs.Theftcomm.Iterate
+                     , Mitsfs.Theftcomm.Tif
                      , Mitsfs.Theftcomm.Validate
   build-depends:       base >= 4.7 && < 5
                      , iCalendar >= 0.5.0

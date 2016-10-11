@@ -3,12 +3,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Mitsfs.Theftcomm.Tif
-  (
+  ( Hours(..)
+  , Keyholder(..)
+  , TifEntry(..)
+  , TifLog(..)
+  , toHours
   ) where
 
 import           Data.Csv
-import           Data.Text.Lazy (Text)
+import           Data.Maybe
+import           Data.Text.Lazy
 import           GHC.Generics   (Generic)
+import           Text.ICalendar
+
 
 data Keyholder = Keyholder Text deriving (Show, Eq, Ord, Generic)
 
@@ -28,9 +35,20 @@ instance ToNamedRecord a => ToNamedRecord (TifEntry a) where
 instance DefaultOrdered a => DefaultOrdered (TifEntry a) where
   headerOrder (TifEntry _ v) = mappend (header ["keyholder"]) (headerOrder v)
 
-data Hours = Scheduled String
-  | Canceled String
+data Hours = Scheduled Keyholder
+  | Canceled Keyholder
   | Unscheduled deriving (Show, Ord, Eq)
+
+toHours :: Maybe (RItem VEvent) -> Hours
+toHours Nothing = Unscheduled
+toHours (Just r) = let
+  summary = veSummary (rItem r)
+  initialsRaw s = strip $ summaryValue s
+  isCanceled s = "cancel" `isPrefixOf` toLower (initialsRaw s)
+  initials s = stripStart $ mconcat $ Prelude.tail $ split (== ':') $ initialsRaw s
+  in case veSummary (rItem r) of
+    Nothing -> Unscheduled
+    Just s -> if isCanceled s then Canceled (Keyholder $ initials s) else Scheduled (Keyholder $ initialsRaw s)
 
 data TifLog = TifLog
   { rawScheduledHeld               :: Float
