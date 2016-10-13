@@ -1,9 +1,9 @@
 module Main where
 
 import           Control.Monad       (join)
-import           Data.Time           (Day, defaultTimeLocale, getCurrentTime,
-                                      getCurrentTimeZone, localDay, parseTimeM,
-                                      utcToLocalTime)
+import           Data.Time           (Day, addDays, defaultTimeLocale,
+                                      getCurrentTime, getCurrentTimeZone,
+                                      localDay, parseTimeM, utcToLocalTime)
 import           Options.Applicative
 
 import qualified Mitsfs.Theftcomm    as Theftcomm
@@ -56,7 +56,7 @@ opts day = hsubparser
 main :: IO ()
 main = do
   tz <- getCurrentTimeZone
-  today <- localDay . utcToLocalTime tz <$> getCurrentTime
+  today <- addDays (-1) . localDay . utcToLocalTime tz <$> getCurrentTime
   join $ customExecParser (prefs showHelpOnError) (info (helper <*> opts today) ( fullDesc
      <> progDesc "Theftcomm tyrannical iron fist utilities"
      <> header "theftcomm - utilities" ))
