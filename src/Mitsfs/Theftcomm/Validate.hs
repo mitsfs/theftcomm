@@ -67,18 +67,17 @@ canceledHours tz start old new = let
   canceledStr (s, e, a, b) = case (toHours a, toHours b) of
     (Unscheduled, Unscheduled) -> Nothing
     (Scheduled k, Unscheduled) -> Just $ showS k s e ++ " were deleted and should be munched or marked as cancelled."
-    (Canceled k, Unscheduled) -> Nothing -- Should we do nothing here?
+    (Canceled _, Unscheduled) -> Nothing -- Should we do nothing here?
     (_, Scheduled _) -> Nothing
     (_, Canceled k) -> Just $ showS k s e ++ " are cancelled. Please munch."
   in mapMaybe canceledStr xs
 
-generateHours :: TimeZone
-                  ->  UTCTime -- Start Time
+generateHours :: UTCTime -- ^ Start Time
                   -> [RItem VEvent] -- ^ Last weeks events
                   -> [RItem VEvent] -- ^ This weeks events
                   -> V.Vector DoorLog -- ^ DoorLog
                   -> [TifEntry TifLog]
-generateHours tz start old new doorLog = let
+generateHours start old new doorLog = let
   end = start & flexDT.days +~ 1
   xs = iterate3Tuple start end old new doorLog
   summary :: (UTCTime, UTCTime, Maybe (RItem VEvent), Maybe (RItem VEvent), Maybe DoorLog) -> Maybe (TifEntry TifLog)
@@ -101,8 +100,8 @@ generateHours tz start old new doorLog = let
       (Unscheduled, Canceled k, Closed) -> toT k $ mempty {rawScheduledCanceled = len}
       (Canceled _, Scheduled k, Closed) -> toT k $ mempty {rawScheduledAbsent = len}
       (Canceled _, Scheduled k, Open) -> toT k $ mempty {rawScheduledHeld = len}
-      (Canceled k, Unscheduled, Closed) -> Nothing
-      (Canceled k, Unscheduled, Open) -> Nothing
+      (Canceled _, Unscheduled, Closed) -> Nothing
+      (Canceled _, Unscheduled, Open) -> Nothing
       (Canceled _, Canceled k, Closed) -> toT k $ mempty {rawScheduledCanceled = len}
       (Canceled _, Canceled k, Open) -> toT k $ mempty {rawScheduledHeld = len}
   in tifConcat $ mapMaybe summary xs

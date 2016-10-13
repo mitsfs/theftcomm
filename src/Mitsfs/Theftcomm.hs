@@ -114,7 +114,7 @@ generate config = do
       oldCalendar = either error id $ getICalEventsDays oldContent today 1
       tz = getTZOffset content today
   doorLog <- getDoorLog config
-  let tifEntry = generateHours tz (toUTC today tz) oldCalendar calendar doorLog
+  let tifEntry = generateHours (toUTC today tz) oldCalendar calendar doorLog
       csv = encodeDefaultOrderedByName tifEntry
       path = tcTheftcommDataFolder config ++ dataFileName today
   BS.writeFile path csv
@@ -122,7 +122,6 @@ generate config = do
 summary :: TheftcommConfig -> IO ()
 summary config = do
   let today = tcDate config
-      test = "dfdf"
       start = today & flexD.months -~ 1
   entries <- mapM (getSummaryFile config) [start .. today]
   let csv = encodeDefaultOrderedByName $ summaryHours (join entries)
