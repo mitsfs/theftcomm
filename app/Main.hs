@@ -25,7 +25,7 @@ theftcommOptions today = Theftcomm.TheftcommConfig <$>
   strOption (long "theftcomm-email" <> metavar "THEFTCOMM_EMAIL" <> help "Theftcomm Email" <> value "theftcomm@mit.edu") <*>
   strOption (long "keyholders-email" <> metavar "KEYHOLDERS_EMAIL" <> help "Keyholder Email" <> value "keyholders@mit.edu") <*>
   strOption (long "star-chamber-email" <> metavar "STAR_CHAMBER_EMAIL" <> help "Star Chamber Email" <> value "star-chamber@mit.edu; theftcomm@mit.edu") <*>
-  strOption (long "host" <> metavar "HOST" <> help "Smtp Server" <> value "outgoing.mit.edu") <*>
+  strOption (long "host" <> metavar "HOST" <> help "Smtp Server" <> value "localhost") <*>
   switch (long "email" <> help "Should email output rather than print")
 
 validate :: Day -> Parser (IO ())

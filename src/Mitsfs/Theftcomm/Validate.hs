@@ -85,7 +85,7 @@ generateHours tz start old new doorLog = let
   summary (_, _ , _, _, Nothing) = error "When generating summary should have a door log"
   summary (s, e, a, b, Just l) = let
     len = fromRational $ toRational (diffUTCTime e s) / 3600
-    toT k e = Just $ TifEntry k e
+    toT k t = Just $ TifEntry k t
     in case (toHours a, toHours b, doorState l) of
       (_, _, Unknown) -> Nothing
       (Unscheduled, Unscheduled, _) -> Nothing

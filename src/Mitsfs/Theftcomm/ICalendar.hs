@@ -22,7 +22,6 @@ import           Data.Time.Lens       (days, flexDT)
 
 import           Text.ICalendar
 
-
 showVEvent :: (Day -> TimeZone) -> VEvent -> String
 showVEvent tzf v = summary (veSummary v) ++ startDate (veDTStart v) ++ endDate (veDTEndDuration v)
   where
@@ -92,17 +91,17 @@ getICalEventsDays content day len = do
     let utcTime = localTimeToUTC tzOffset $ LocalTime day midnight
     pure $ takeDates utcTime (utcTime & flexDT.days +~ len) $ toICalEvents vcal
 
-takeDates :: UTCTime -> UTCTime -> [RItem r] -> [RItem r]
+takeDates :: UTCTime -> UTCTime -> [RItem a] -> [RItem a]
 takeDates l u = takeWhileUpperTime u . filterLowerTime l
 
-filterLowerTime :: UTCTime -> [RItem r] -> [RItem r]
+filterLowerTime :: UTCTime -> [RItem a] -> [RItem a]
 filterLowerTime t = let
   f (Just end) = end >= t
   f Nothing    = error "No start or end Time"
-  date r = rIEndDateUtc r <|> rIStartDateUtc r
+  date r = rIEndDateUtc r <|> error "VEVENTS should have end days"
   in filter (f . date)
 
-takeWhileUpperTime :: UTCTime -> [RItem r] -> [RItem r]
+takeWhileUpperTime :: UTCTime -> [RItem a] -> [RItem a]
 takeWhileUpperTime t = let
   f (Just start) = start <= t
   f Nothing      = error "No start time"

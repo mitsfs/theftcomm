@@ -108,14 +108,13 @@ validate config = do
 generate :: TheftcommConfig -> IO ()
 generate config = do
   let today = tcDate config
-      start = today & flexD.days -~ 7
-  content <- getICalFile config today
-  newContent <- getICalFile config start
+  content <- getICalFile config (today & flexD.days +~ 7)
+  oldContent <- getICalFile config (today & flexD.days -~ 7)
   let calendar = either error id $ getICalEventsDays content today 1
-      newCalendar = either error id $ getICalEventsDays newContent today 1
+      oldCalendar = either error id $ getICalEventsDays oldContent today 1
       tz = getTZOffset content today
   doorLog <- getDoorLog config
-  let tifEntry = generateHours tz (toUTC today tz) newCalendar calendar doorLog
+  let tifEntry = generateHours tz (toUTC today tz) oldCalendar calendar doorLog
       csv = encodeDefaultOrderedByName tifEntry
       path = tcTheftcommDataFolder config ++ dataFileName today
   BS.writeFile path csv
