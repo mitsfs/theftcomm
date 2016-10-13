@@ -53,7 +53,6 @@ data Hours = Scheduled Keyholder
 toHours :: Maybe (RItem VEvent) -> Hours
 toHours Nothing = Unscheduled
 toHours (Just r) = let
-  summary = veSummary (rItem r)
   initialsRaw s = strip $ summaryValue s
   isCanceled s = "cancel" `isPrefixOf` toLower (initialsRaw s)
   initials s = stripStart $ mconcat $ Prelude.tail $ split (== ':') $ initialsRaw s

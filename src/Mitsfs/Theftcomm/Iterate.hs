@@ -7,16 +7,14 @@ module Mitsfs.Theftcomm.Iterate
   , iterate3Tuple
   ) where
 
-import           Control.Applicative      ((<|>))
 import           Control.Monad            (join)
 import           Data.Maybe
-import           Data.Time                (UTCTime, utc)
+import           Data.Time                (UTCTime)
 import qualified Data.Vector              as V
 
 import           Mitsfs.Theftcomm.DoorLog
 import           Text.ICalendar
 
-import Mitsfs.Theftcomm.ICalendar
 
 class (Show (a b), Show b) => IterableUTC a b where
   startUTC :: a b -> Maybe UTCTime
