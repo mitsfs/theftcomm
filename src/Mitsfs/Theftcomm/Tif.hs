@@ -35,8 +35,11 @@ instance ToNamedRecord a => ToNamedRecord (TifEntry a) where
   toNamedRecord (TifEntry keyholder tif) = mappend
     (namedRecord ["keyholder" .= keyholder])
     (toNamedRecord tif)
-instance DefaultOrdered a => DefaultOrdered (TifEntry a) where
-  headerOrder (TifEntry _ v) = mappend (header ["keyholder"]) (headerOrder v)
+instance DefaultOrdered (TifEntry TifLog) where
+  headerOrder _ = mappend (header ["keyholder"]) (headerOrder (undefined :: TifLog))
+
+instance DefaultOrdered (TifEntry TifLogSummary) where
+  headerOrder _ = mappend (header ["keyholder"]) (headerOrder (undefined :: TifLogSummary))
 
 tifConcat :: Monoid a => [TifEntry a] -> [TifEntry a]
 tifConcat xs = let
