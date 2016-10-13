@@ -34,7 +34,7 @@ outputIO :: TheftcommConfig -> TheftcommDest -> String -> String -> IO ()
 outputIO config dest subject xs
   | null xs = pure ()
   | tcShouldEmail config = let
-      server       = "outgoing.mit.edu"
+      server       = tcEmailHost config
       from         = tcFromEmail config
       to           = case dest of
         StarChamber -> tcStarChamberEmail config

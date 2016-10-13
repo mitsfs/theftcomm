@@ -15,7 +15,6 @@ module Mitsfs.Theftcomm.Tif
 
 import           Data.Csv
 import qualified Data.Map       as M
-import           Data.Maybe
 import           Data.Text.Lazy
 import           GHC.Generics   (Generic)
 import           Text.ICalendar

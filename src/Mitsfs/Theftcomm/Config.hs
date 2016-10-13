@@ -16,6 +16,7 @@ data TheftcommConfig = TheftcommConfig
   , tcTheftcommEmail      :: String
   , tcKeyholderEmail      :: String
   , tcStarChamberEmail    :: String
+  , tcEmailHost           :: String
   , tcShouldEmail         :: Bool
   } deriving (Show, Eq, Ord)
 
