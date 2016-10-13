@@ -41,6 +41,6 @@ instance Csv.FromField UTCTime where
 instance Csv.FromRecord DoorLog where
   parseRecord v
     | length v == 4 = DoorLog <$>
-                      v Csv..! 1 <*>
-                      v Csv..! 2
+                      v Csv..! 2 <*>
+                      v Csv..! 1
     | otherwise     = mzero
