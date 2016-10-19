@@ -14,16 +14,17 @@ import qualified Data.Vector                as V
 import           Mitsfs.Theftcomm.DoorLog
 import           Mitsfs.Theftcomm.ICalendar
 import           Mitsfs.Theftcomm.Iterate
+import           Data.Text.Lazy as Text
 import           Mitsfs.Theftcomm.Tif
-import           Text.ICalendar             (RItem (..), VEvent (..),
+import           Text.ICalendar             (RItem (..), VEvent (..), DateTime (..),
                                              summaryValue)
 
-allFormattedErrors :: (Day -> TimeZone) -> M.Map Text Text -> [RItem VEvent] -> [String]
+allFormattedErrors :: (Text -> Day -> TimeZone) -> M.Map Text Text -> [RItem VEvent] -> [String]
 allFormattedErrors tzf k vs = catMaybes
           [formattedErrors (badSummaries tzf k vs) "Invalid calendar summaries:"
           , formattedErrors (overlapingEvents tzf vs) "Overlaping hours at:"]
 
-overlapingEvents :: (Day -> TimeZone) -> [RItem VEvent] -> [String]
+overlapingEvents :: (Text -> Day -> TimeZone) -> [RItem VEvent] -> [String]
 overlapingEvents tzf (x:y:xs) = if rIStartDateUtc y < rIEndDateUtc x then
   (showRItem tzf x ++ " and " ++ showRItem tzf y) : overlapingEvents tzf (y:xs)
   else overlapingEvents tzf (y:xs)
@@ -33,10 +34,10 @@ formattedErrors :: [String] -> String -> Maybe String
 formattedErrors [] _ = Nothing
 formattedErrors xs t = Just $ L.intercalate "\n    " (t:xs)
 
-badSummaries :: (Day -> TimeZone) -> M.Map Text Text -> [RItem VEvent] -> [String]
+badSummaries :: (Text -> Day -> TimeZone) -> M.Map Text Text -> [RItem VEvent] -> [String]
 badSummaries tzf key = Prelude.foldr ((++) . badSummary tzf key) []
 
-badSummary :: (Day -> TimeZone) -> M.Map Text Text -> RItem VEvent -> [String]
+badSummary :: (Text -> Day -> TimeZone) -> M.Map Text Text -> RItem VEvent -> [String]
 badSummary tzf key v = summaryError (veSummary (rItem v))
   where
     summaryError Nothing  = ["Blank Keyholder: " ++ showRItem tzf v]
@@ -54,15 +55,15 @@ badSummary tzf key v = summaryError (veSummary (rItem v))
       | otherwise = ["Unknown prefix: " ++ show c ++ extra]
 
 
-canceledHours :: TimeZone
+canceledHours :: (Text -> Day -> TimeZone)
                   ->  UTCTime -- Start Time
                   -> [RItem VEvent] -- ^ Last weeks events
                   -> [RItem VEvent] -- ^ This weeks events
                   -> [String]
-canceledHours tz start old new = let
+canceledHours tzf start old new = let
   end = start & flexDT.days +~ 1
   xs = iterateTuple start end old new
-  showS (Keyholder k) s e = "Hours " ++ unpack k ++ " between " ++ show (utcToZonedTime tz s) ++ " and " ++ show (utcToZonedTime tz e)
+  showS (Keyholder k) s e = "Hours " ++ unpack k ++ " between " ++ showDateTimePair tzf (UTCDateTime s) (UTCDateTime e)
   canceledStr :: (UTCTime, UTCTime, Maybe (RItem VEvent), Maybe (RItem VEvent)) -> Maybe String
   canceledStr (s, e, a, b) = case (toHours a, toHours b) of
     (Unscheduled, Unscheduled) -> Nothing

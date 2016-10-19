@@ -1,39 +1,42 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Mitsfs.Theftcomm.ICalendar
-  ( getICalEvents
+  ( defaultTZ
+  , getICalEvents
   , getICalEventsDays
   , getTZOffset
   , showRItem
   , showRItemSummary
+  , showDateTimePair
   , toUTC
   ) where
 
 import           Control.Applicative
 import           Control.Lens         ((&), (+~))
 import qualified Data.ByteString.Lazy as BS
+import qualified Data.Text.Lazy as T
+import           Data.Text.Lazy (Text)
 import           Data.Default
 import           Data.List
 import           Data.Maybe
 import           Data.String
 import           Data.Time            (Day, LocalTime (..), TimeZone,
-                                       UTCTime (..), localTimeToUTC, midnight,
-                                       utcToZonedTime)
+                                       UTCTime (..), TimeOfDay(..), localTimeToUTC, midnight,
+                                       utcToZonedTime, utcToLocalTime, timeZoneOffsetString)
 import           Data.Time.Lens       (days, flexDT)
 
 import           Text.ICalendar
 
-showVEvent :: (Day -> TimeZone) -> VEvent -> String
-showVEvent tzf v = summary (veSummary v) ++ startDate (veDTStart v) ++ endDate (veDTEndDuration v)
+showVEvent :: (Text -> Day -> TimeZone) -> VEvent -> String
+showVEvent tzf v = summary (veSummary v) ++ date (veDTStart v) (veDTEndDuration v)
   where
     summary (Just s) = show (summaryValue s) ++ " hours "
     summary Nothing  = "<Unknown Hours>"
-    startDate (Just d) = showVDateTime tzf (dtStartValue d)
-    startDate Nothing  = error "Events should have a start time"
-    endDate (Just (Left (DTEnd d _)))         = " - " ++ showVDateTime tzf d
-    endDate (Just (Right (DurationProp d _))) = " - " ++ show d
-    endDate Nothing                           = ""
+    date Nothing _  = error "Events should have a start time"
+    date (Just d) Nothing = showVDateTime tzf (dtStartValue d)
+    date (Just d) (Just (Left (DTEnd de _))) = showVDateTimePair tzf (dtStartValue d) de
+    date (Just d) (Just (Right (DurationProp de _))) = showVDateTime tzf (dtStartValue d) ++ " - " ++ show de
 
-showRItem :: (Day -> TimeZone) -> RItem VEvent -> String
+showRItem :: (Text -> Day -> TimeZone) -> RItem VEvent -> String
 showRItem tzf r = showVEvent tzf (rItem r)
 
 showRItemSummary :: RItem VEvent -> String
@@ -42,23 +45,64 @@ showRItemSummary r = summary (veSummary (rItem r))
     summary (Just s) = show (summaryValue s) ++ " hours "
     summary Nothing  = "<Unknown Hours>"
 
-showVDateTime :: (Day -> TimeZone) -> VDateTime -> String
+showVDateTimePair :: (Text -> Day -> TimeZone) -> VDateTime -> VDateTime -> String
+showVDateTimePair tzf (VDateTime dt) (VDateTime dte) = showDateTimePair tzf dt dte
+showVDateTimePair _ (VDate (Date d))  (VDate (Date de)) = show d ++ show de
+showVDateTimePair _ s e = error "Miss Matched date types" ++ show s ++ "-" ++ show e
+
+showDateTimePair :: (Text -> Day -> TimeZone) -> DateTime -> DateTime -> String
+showDateTimePair tzf (ZonedDateTime dt stz) (ZonedDateTime dte stze)
+  | tz /= tze = show dt ++ tz ++ "-" ++ show dte ++ tze
+  | otherwise = showDTPair dt dte ++ tz
+  where
+    tz = showTZ $ tzf stz $ localDay dt
+    tze = showTZ $ tzf stze $ localDay dte
+showDateTimePair _ (FloatingDateTime dt) (FloatingDateTime dte) = showDTPair dt dte
+showDateTimePair tzf (UTCDateTime dt) (UTCDateTime dte) = let
+  tz = tzf defaultTZ $ utctDay dt
+  tze = tzf defaultTZ $ utctDay dte
+  dtS = utcToLocalTime tz dt
+  dtE = utcToLocalTime tze dte
+  stz = showTZ tz
+  stze = showTZ tze
+  in if stz /= stze then  show dtS ++ stz ++ "-" ++ show dtE ++ stze ++ utcDebug
+  else showDTPair dtS dtE ++ stz ++ utcDebug
+
+showDTPair :: LocalTime -> LocalTime -> String
+showDTPair (LocalTime ds ts) (LocalTime de te)
+  | ds == de = show ds ++ " " ++ showTime ts ++ "-" ++ showTime te
+  | otherwise = show ds ++ " " ++ showTime ts ++ "-" ++ show de ++ " " ++ showTime te
+
+showTime :: TimeOfDay -> String
+showTime (TimeOfDay h m _) = show2 h ++ ":" ++ show2 m
+
+show2 :: Int -> String
+show2 i = if i < 10 then "0" ++ show i else show i
+
+showTZ :: TimeZone -> String
+showTZ tz = " T" ++ timeZoneOffsetString tz
+
+showVDateTime :: (Text -> Day -> TimeZone) -> VDateTime -> String
 showVDateTime tzf (VDateTime dt) = showDateTime tzf dt
 showVDateTime _ (VDate (Date d)) = show d
 
-showDateTime :: (Day -> TimeZone) -> DateTime -> String
+showDateTime :: (Text -> Day -> TimeZone) -> DateTime -> String
 showDateTime _ (ZonedDateTime dt tz) = show dt ++ " " ++ show tz
 showDateTime _ (FloatingDateTime dt) = show dt
-showDateTime tzf (UTCDateTime dt)     = show $ utcToZonedTime (tzf $ utctDay dt) dt
+showDateTime tzf (UTCDateTime dt)    = let tz = tzf defaultTZ $ utctDay dt
+  in show (utcToLocalTime tz dt) ++ showTZ tz ++ utcDebug
 
 defaultTZ :: IsString s => s
 defaultTZ = "America/New_York"
 
-getTZOffset :: BS.ByteString -> Day -> TimeZone
-getTZOffset content d = let
+utcDebug :: IsString s => s
+utcDebug = "(U)"
+
+getTZOffset :: BS.ByteString -> Text -> Day -> TimeZone
+getTZOffset content t d = let
     vcal = either (error "Invalid VCalendar") id $ getICal content
     lt = LocalTime d midnight
-    in fromMaybe (error "Invalid Date or TimeZone") $ vCalendarTZIDToOffsets vcal defaultTZ lt
+    in fromMaybe (error "Invalid Date or TimeZone") $ vCalendarTZIDToOffsets vcal t lt
 
 getICal :: BS.ByteString -> Either String VCalendar
 getICal content = do

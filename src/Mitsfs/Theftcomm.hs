@@ -86,8 +86,9 @@ allCanceledHours config offsetDay = do
   newContent <- getICalFile config start
   let calendar = either error id $ getICalEventsDays content end 1
   let newCalendar = either error id $ getICalEventsDays newContent end 1
-  let tz = getTZOffset content end
-  pure $ canceledHours tz (toUTC end tz) newCalendar calendar
+  let tzf = getTZOffset content
+      tz = tzf defaultTZ end
+  pure $ canceledHours tzf (toUTC end tz) newCalendar calendar
 
 
 canceled :: TheftcommConfig -> IO ()
@@ -112,7 +113,7 @@ generate config = do
   oldContent <- getICalFile config (today & flexD.days -~ 7)
   let calendar = either error id $ getICalEventsDays content today 1
       oldCalendar = either error id $ getICalEventsDays oldContent today 1
-      tz = getTZOffset content today
+      tz = getTZOffset content defaultTZ today
   doorLog <- getDoorLog config
   let tifEntry = generateHours (toUTC today tz) oldCalendar calendar doorLog
       csv = encodeDefaultOrderedByName tifEntry

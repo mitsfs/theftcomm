@@ -1,0 +1,4 @@
+keyholder,rawScheduledHeld,rawScheduledMunched,rawScheduledCanceled,rawScheduledCanceledImproperly,rawScheduledAbsent,rawUnscheduledHeld
+HOB,0.0,0.0,0.0,0.0,0.0,2.0
+LAM,2.0,0.0,0.0,0.0,0.0,0.0
+SCP,0.0,0.0,0.0,0.0,0.0,2.0
