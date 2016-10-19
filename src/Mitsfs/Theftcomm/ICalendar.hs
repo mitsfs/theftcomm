@@ -13,15 +13,16 @@ module Mitsfs.Theftcomm.ICalendar
 import           Control.Applicative
 import           Control.Lens         ((&), (+~))
 import qualified Data.ByteString.Lazy as BS
-import qualified Data.Text.Lazy as T
-import           Data.Text.Lazy (Text)
 import           Data.Default
 import           Data.List
 import           Data.Maybe
 import           Data.String
-import           Data.Time            (Day, LocalTime (..), TimeZone,
-                                       UTCTime (..), TimeOfDay(..), localTimeToUTC, midnight,
-                                       utcToZonedTime, utcToLocalTime, timeZoneOffsetString)
+import           Data.Text.Lazy       (Text)
+import qualified Data.Text.Lazy       as T
+import           Data.Time            (Day, LocalTime (..), TimeOfDay (..),
+                                       TimeZone, UTCTime (..), localTimeToUTC,
+                                       midnight, timeZoneOffsetString,
+                                       utcToLocalTime, utcToZonedTime)
 import           Data.Time.Lens       (days, flexDT)
 
 import           Text.ICalendar
@@ -96,7 +97,7 @@ defaultTZ :: IsString s => s
 defaultTZ = "America/New_York"
 
 utcDebug :: IsString s => s
-utcDebug = "(U)"
+utcDebug = "'"
 
 getTZOffset :: BS.ByteString -> Text -> Day -> TimeZone
 getTZOffset content t d = let
