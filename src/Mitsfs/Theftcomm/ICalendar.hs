@@ -68,6 +68,7 @@ showDateTimePair tzf (UTCDateTime dt) (UTCDateTime dte) = let
   stze = showTZ tze
   in if stz /= stze then  show dtS ++ stz ++ "-" ++ show dtE ++ stze ++ utcDebug
   else showDTPair dtS dtE ++ stz ++ utcDebug
+showDateTimePair _ dt dte = error "Date time pair types should match" ++ show dt ++ show dte
 
 showDTPair :: LocalTime -> LocalTime -> String
 showDTPair (LocalTime ds ts) (LocalTime de te)
