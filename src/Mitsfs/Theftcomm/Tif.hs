@@ -98,7 +98,7 @@ instance DefaultOrdered TifLogSummary
 rawToSummary :: TifLog -> TifLogSummary
 rawToSummary (TifLog held munched canceled canceledI absent unscheduled) =
   TifLogSummary {
-    tifScore = held + munched - canceled - 2 * (canceledI + absent) + unscheduled / 2,
+    tifScore = held + munched - canceled - 1 * (canceledI + absent) + unscheduled / 2,
     summaryHeld = held + munched,
     summaryCanceled = canceled + canceledI + absent,
     summaryUnscheduled = unscheduled,
