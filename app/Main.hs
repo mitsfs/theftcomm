@@ -14,9 +14,11 @@ parseDay = let
     Right $ parseTimeM True defaultTimeLocale "%F" ws
   in eitherReader f
 
+
 theftcommOptions :: Day -> Parser Theftcomm.TheftcommConfig
 theftcommOptions today = Theftcomm.TheftcommConfig <$>
   option parseDay (long "date" <> short 'd' <> metavar "DATE" <> help "date to validate on" <> value today ) <*>
+  option auto (long "months" <> metavar "MONTHS" <> help "months of summary data" <> value 1 ) <*>
   strOption (long "door" <> metavar "DOOR_PATH" <> help "path to door.log file" <> value "/mit/mitsfs/ookcomm/door-sensor/logs/w20-473.log") <*>
   strOption (long "keyholders" <> metavar "KEYHOLDERS_PATH" <> help "path to Keyholder.json file" <> value "/mit/mitsfs/tif/keyholders.json") <*>
   strOption (long "ical" <> metavar "ICAL_PATH" <> help "path to ICalendar Folder" <> value "/mit/mitsfs/tif/calendar_logs") <*>

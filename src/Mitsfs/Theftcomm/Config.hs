@@ -8,6 +8,7 @@ import           Data.Time (Day)
 
 data TheftcommConfig = TheftcommConfig
   { tcDate                :: Day
+  , tcSummaryMonths       :: Int
   , tcDoorLogPath         :: String
   , tcKeyholderPath       :: String
   , tcICalendarFolder     :: String

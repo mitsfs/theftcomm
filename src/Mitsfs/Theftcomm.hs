@@ -123,7 +123,7 @@ generate config = do
 summary :: TheftcommConfig -> IO ()
 summary config = do
   let today = tcDate config
-      start = today & flexD.months -~ 1
+      start = today & flexD.months -~ (tcSummaryMonths config)
   entries <- mapM (getSummaryFile config) [start .. today]
   let csv = encodeDefaultOrderedByName $ summaryHours (join entries)
       path = tcTheftcommDataFolder config ++ summaryFileName today
