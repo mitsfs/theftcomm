@@ -14,6 +14,9 @@ cache:
   - $HOME/.cabal
   - $HOME/.stack
 
+env:
+  global:
+    - OCTOKIT_API_ENDPOINT: "https://github.mit.edu/api/v3/"
 
 # The different configurations we want to test. We have BUILD=cabal which uses
 # cabal-install, and BUILD=stack which uses Stack. More documentation on each
@@ -36,6 +39,16 @@ matrix:
   # variable, such as using --stack-yaml to point to a different file.
   - env: BUILD=stack ARGS="--resolver lts-8"
     compiler: ": #stack 8.0.2"
+    before_deploy:
+      - stack --no-terminal $ARGS build
+    deploy:
+      provider: releases
+      api_key:
+        secure: "g+Y1g9XNW3vTqP0G+G19cTlBU8vaHmpAMbzq7dz9YYk6cQt8W42euxxM5s6ImoQAcIDw+ziTKPDl5uFET7tFASPjSwj6fJj1GDb1pV9mRTyQLtMWTW2KRrjimc9Jq+4e+K9r2AVsl0yAnlxf+23bk+gNDBAXBJZHk5PrTZgTdvk="
+      file: "`stack $ARGS path --local-install-root`/bin/theftcomm"
+      skip_cleanup: true
+      on:
+        tags: true
 
   # Nightly builds are allowed to fail
   - env: BUILD=stack ARGS="--resolver nightly"
@@ -79,33 +92,9 @@ install:
 - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
 -  git clone -b develop https://github.com/pweaver/iCalendar.git iCalendar
 - |
-  case "$BUILD" in
-    stack)
-      ulimit -n 4096
-      stack --no-terminal --install-ghc $ARGS test --only-dependencies --fast
-      ;;
-    cabal)
-      cabal --version
-      travis_retry cabal update
-      cabal install -j --only-dependencies -ffast --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS
-      ;;
-  esac
+  ulimit -n 4096
+  stack --no-terminal --install-ghc $ARGS test --only-dependencies --fast
 script:
 - |
-  case "$BUILD" in
-    stack)
-      ulimit -n 4096
-      stack --no-terminal $ARGS test --ghc-options="-O0 -Wall -Werror"
-      ;;
-    cabal)
-      cabal configure --enable-tests --enable-benchmarks -v2 -ffast --ghc-options="-O0 -Wall -fno-warn-unused-do-bind -Werror" && \
-      cabal build -j && \
-      cabal check && \
-      cabal test -j && \
-      cabal copy && \
-      cabal sdist && \
-      SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz && \
-      cd dist && \
-      cabal install -j -v2 -ffast --ghc-options="-O0 -Wall -fno-warn-unused-do-bind -Werror" --force-reinstall "$SRC_TGZ"
-      ;;
-  esac
+  ulimit -n 4096
+  stack --no-terminal $ARGS test --ghc-options="-O0 -Wall -Werror"
