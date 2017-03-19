@@ -8,13 +8,12 @@ import qualified Data.Map                   as M
 import           Data.Maybe
 import           Data.Text.Lazy
 import           Data.Time                  (Day, TimeZone, UTCTime,
-                                             diffUTCTime, utcToZonedTime)
+                                             diffUTCTime)
 import           Data.Time.Lens             (days, flexDT)
 import qualified Data.Vector                as V
 import           Mitsfs.Theftcomm.DoorLog
 import           Mitsfs.Theftcomm.ICalendar
 import           Mitsfs.Theftcomm.Iterate
-import           Data.Text.Lazy as Text
 import           Mitsfs.Theftcomm.Tif
 import           Text.ICalendar             (RItem (..), VEvent (..), DateTime (..),
                                              summaryValue)

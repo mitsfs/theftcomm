@@ -8,6 +8,8 @@ import           Options.Applicative
 
 import qualified Mitsfs.Theftcomm    as Theftcomm
 
+import           Data.Monoid         ((<>))
+
 parseDay :: ReadM Day
 parseDay = let
   f ws = maybe (Left ("Unable to parse date '" ++ ws ++ "' must be in format YYYY-MM-DD"))

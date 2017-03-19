@@ -18,11 +18,10 @@ import           Data.List
 import           Data.Maybe
 import           Data.String
 import           Data.Text.Lazy       (Text)
-import qualified Data.Text.Lazy       as T
 import           Data.Time            (Day, LocalTime (..), TimeOfDay (..),
                                        TimeZone, UTCTime (..), localTimeToUTC,
                                        midnight, timeZoneOffsetString,
-                                       utcToLocalTime, utcToZonedTime)
+                                       utcToLocalTime)
 import           Data.Time.Lens       (days, flexDT)
 
 import           Text.ICalendar

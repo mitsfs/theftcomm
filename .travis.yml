@@ -1,0 +1,111 @@
+# This .travis.yml is modified from the sample at
+# https://docs.haskellstack.org/en/stable/GUIDE/#travis-with-caching
+
+# Use new container infrastructure to enable caching
+sudo: false
+
+# Do not choose a language; we provide our own build tools.
+language: generic
+
+# Caching so the next build will be fast too.
+cache:
+  directories:
+  - $HOME/.ghc
+  - $HOME/.cabal
+  - $HOME/.stack
+
+
+# The different configurations we want to test. We have BUILD=cabal which uses
+# cabal-install, and BUILD=stack which uses Stack. More documentation on each
+# of those below.
+#
+# We set the compiler values here to tell Travis to use a different
+# cache file per set of arguments.
+#
+# If you need to have different apt packages for each combination in the
+# matrix, you can use a line such as:
+#     addons: {apt: {packages: [libfcgi-dev,libgmp-dev]}}
+#
+# fast_finish: build successful when every builds not in allow_failure are finished
+# i.e. not waiting any of the allow_failure to finish
+matrix:
+  include:
+
+
+  # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
+  # variable, such as using --stack-yaml to point to a different file.
+  - env: BUILD=stack ARGS="--resolver lts-8"
+    compiler: ": #stack 8.0.2"
+
+  # Nightly builds are allowed to fail
+  - env: BUILD=stack ARGS="--resolver nightly"
+    compiler: ": #stack nightly"
+
+  # - env: BUILD=stack ARGS="--resolver lts-8"
+  #   compiler: ": #stack 8.0.2 osx"
+  #   os: osx
+
+  # - env: BUILD=stack ARGS="--resolver nightly"
+  #   compiler: ": #stack nightly osx"
+  #   os: osx
+
+  allow_failures:
+  - env: BUILD=stack ARGS="--resolver nightly"
+
+  fast_finish: true
+
+before_install:
+# Using compiler above sets CC to an invalid value, so unset it
+- unset CC
+
+- sudo apt-get install -y libgmp-dev
+
+# We want to always allow newer versions of packages when building on GHC HEAD
+- CABALARGS=""
+- if [ "x$GHCVER" = "xhead" ]; then CABALARGS=--allow-newer; fi
+- export PATH=$PATH:/opt/happy/1.19.5/bin/:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.local/bin
+# Download and unpack the stack executable
+- |
+  if [[ $BUILD == "stack" ]]; then
+    mkdir -p ~/.local/bin
+    if [ `uname` = "Darwin" ]
+    then
+      curl --insecure -L https://www.stackage.org/stack/osx-x86_64 | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
+    else
+      curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+    fi
+  fi
+install:
+- echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+-  git clone -b develop https://github.com/pweaver/iCalendar.git iCalendar
+- |
+  case "$BUILD" in
+    stack)
+      ulimit -n 4096
+      stack --no-terminal --install-ghc $ARGS test --only-dependencies --fast
+      ;;
+    cabal)
+      cabal --version
+      travis_retry cabal update
+      cabal install -j --only-dependencies -ffast --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS
+      ;;
+  esac
+script:
+- |
+  case "$BUILD" in
+    stack)
+      ulimit -n 4096
+      stack --no-terminal $ARGS test --ghc-options="-O0 -Wall -Werror"
+      ;;
+    cabal)
+      cabal configure --enable-tests --enable-benchmarks -v2 -ffast --ghc-options="-O0 -Wall -fno-warn-unused-do-bind -Werror" && \
+      cabal build -j && \
+      cabal check && \
+      cabal test -j && \
+      cabal copy && \
+      cabal sdist && \
+      SRC_TGZ=$(cabal info . | awk '{print $2;exit}').tar.gz && \
+      cd dist && \
+      cabal install -j -v2 -ffast --ghc-options="-O0 -Wall -fno-warn-unused-do-bind -Werror" --force-reinstall "$SRC_TGZ"
+      ;;
+  esac
