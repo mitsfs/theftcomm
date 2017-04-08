@@ -91,9 +91,11 @@ allCanceledHours config offsetDay = do
   pure $ canceledHours tzf (toUTC end tz) newCalendar calendar
 
 
+-- Today has to already have happened since we generate the calendar at the end of the day.
+-- So we start at 1
 canceled :: TheftcommConfig -> IO ()
 canceled config = do
-  c <- mapM (allCanceledHours config) [0..6]
+  c <- mapM (allCanceledHours config) [1..6]
   outputIO config Keyholders "MITSFS Canceled Hours" (intercalate "\n\n" $ join c)
 
 validate :: TheftcommConfig -> IO ()
