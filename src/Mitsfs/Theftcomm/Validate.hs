@@ -46,12 +46,12 @@ badSummary tzf key v = summaryError (veSummary (rItem v))
     f [x,k] = checkKey k ++ checkCanceled x
     f (x:k:xs) = checkKey k ++ checkCanceled x ++ [" Unknown part " ++ show xs ++ extra]
     extra = " in " ++ showRItem tzf v
-    checkKey k = if M.member (strip k) key then [] else ["Unknown Keyholder " ++ show k ++ extra]
+    keyfile = " Is the keyholder in /mit/mitsfs/tif/keyholders.json?"
+    checkKey k = if M.member (strip k) key then [] else ["Unknown Keyholder " ++ show k ++ extra ++ keyfile]
     checkCanceled c
-      | c == "Canceled" = []
-      | toLower c == "canceled" = ["Canceled capitalixed incorrectly" ++ extra]
-      | toLower c == "cancelled" = ["Canceled spelled incorrectly (Use American version)" ++ extra]
-      | otherwise = ["Unknown prefix: " ++ show c ++ extra]
+      | toLower c == "canceled" = []
+      | toLower c == "cancelled" = []
+      | otherwise = ["Unknown prefix: " ++ show c ++ extra ++ "Canceled: is the only valid prefix."]
 
 
 canceledHours :: (Text -> Day -> TimeZone)

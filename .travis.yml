@@ -86,7 +86,7 @@ before_install:
   fi
 install:
 - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
--  git clone -b develop https://github.com/pweaver/iCalendar.git iCalendar
+- git clone -b develop https://github.com/pweaver/iCalendar.git iCalendar
 - |
   ulimit -n 4096
   stack --no-terminal --install-ghc $ARGS test --only-dependencies --fast
