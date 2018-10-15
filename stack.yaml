@@ -53,8 +53,14 @@ flags: {}
 # Extra package databases containing global packages
 extra-package-dbs: []
 
+build:
+  split-objs: true
+
+ghc-options:
+  "$everything":  -fllvm -O2
+
 # Control whether we use the GHC we find on the path
-# system-ghc: true
+system-ghc: true
 #
 # Require a specific version of stack, using version ranges
 # require-stack-version: -any # Default

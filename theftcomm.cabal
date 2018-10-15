@@ -48,6 +48,7 @@ executable theftcomm
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
+  ld-options:          -static
   build-depends:       base
                      , theftcomm
                      , optparse-applicative
