@@ -3,11 +3,23 @@ sudo: required
 services:
 - docker
 
+cache:
+  directories:
+    - "$HOME/docker"
+
+before_cache:
+  - "mkdir -p $HOME/docker"
+  - "docker save theftcomm | gzip -2 > $HOME/docker/theftcomm.tar.gz"
+
+before_install:
+  - "if [ -f $HOME/docker/theftcomm.tar.gz ] ; then zcat $HOME/docker/theftcomm.tar.gz | docker load ; fi"
+
+
 script:
-- docker build -t theftcomm .
+- "docker build -t theftcomm ."
 
 before_deploy:
-- docker run --rm -it -v $(pwd):/out theftcomm cp /usr/local/bin/theftcomm /out
+- "docker run --rm -it -v $(pwd):/out theftcomm cp /usr/local/bin/theftcomm /out"
 
 deploy:
   provider: releases
