@@ -1,96 +1,20 @@
-# This .travis.yml is modified from the sample at
-# https://docs.haskellstack.org/en/stable/GUIDE/#travis-with-caching
+sudo: required
 
-# Use new container infrastructure to enable caching
-sudo: false
+services:
+- docker
 
-# Do not choose a language; we provide our own build tools.
-language: generic
-
-# Caching so the next build will be fast too.
-cache:
-  directories:
-  - $HOME/.ghc
-  - $HOME/.cabal
-  - $HOME/.stack
-
-# The different configurations we want to test. We have BUILD=cabal which uses
-# cabal-install, and BUILD=stack which uses Stack. More documentation on each
-# of those below.
-#
-# We set the compiler values here to tell Travis to use a different
-# cache file per set of arguments.
-#
-# If you need to have different apt packages for each combination in the
-# matrix, you can use a line such as:
-#     addons: {apt: {packages: [libfcgi-dev,libgmp-dev]}}
-#
-# fast_finish: build successful when every builds not in allow_failure are finished
-# i.e. not waiting any of the allow_failure to finish
-matrix:
-  include:
-
-
-  # The Stack builds. We can pass in arbitrary Stack arguments via the ARGS
-  # variable, such as using --stack-yaml to point to a different file.
-  - env: BUILD=stack ARGS="--resolver lts-8"
-    compiler: ": #stack 8.0.2"
-    before_deploy:
-      - stack --no-terminal $ARGS build
-    deploy:
-      provider: releases
-      api_key:
-        secure: "g+Y1g9XNW3vTqP0G+G19cTlBU8vaHmpAMbzq7dz9YYk6cQt8W42euxxM5s6ImoQAcIDw+ziTKPDl5uFET7tFASPjSwj6fJj1GDb1pV9mRTyQLtMWTW2KRrjimc9Jq+4e+K9r2AVsl0yAnlxf+23bk+gNDBAXBJZHk5PrTZgTdvk="
-      file: "`stack $ARGS path --local-install-root`/bin/theftcomm"
-      skip_cleanup: true
-      on:
-        tags: true
-
-  # Nightly builds are allowed to fail
-  - env: BUILD=stack ARGS="--resolver nightly"
-    compiler: ": #stack nightly"
-
-  # - env: BUILD=stack ARGS="--resolver lts-8"
-  #   compiler: ": #stack 8.0.2 osx"
-  #   os: osx
-
-  # - env: BUILD=stack ARGS="--resolver nightly"
-  #   compiler: ": #stack nightly osx"
-  #   os: osx
-
-  allow_failures:
-  - env: BUILD=stack ARGS="--resolver nightly"
-
-  fast_finish: true
-
-before_install:
-# Using compiler above sets CC to an invalid value, so unset it
-- unset CC
-
-- sudo apt-get install -y libgmp-dev
-
-# We want to always allow newer versions of packages when building on GHC HEAD
-- CABALARGS=""
-- if [ "x$GHCVER" = "xhead" ]; then CABALARGS=--allow-newer; fi
-- export PATH=$PATH:/opt/happy/1.19.5/bin/:/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.local/bin
-# Download and unpack the stack executable
-- |
-  if [[ $BUILD == "stack" ]]; then
-    mkdir -p ~/.local/bin
-    if [ `uname` = "Darwin" ]
-    then
-      curl --insecure -L https://www.stackage.org/stack/osx-x86_64 | tar xz --strip-components=1 --include '*/stack' -C ~/.local/bin
-    else
-      curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-    fi
-  fi
-install:
-- echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
-- git clone -b develop https://github.com/pweaver/iCalendar.git iCalendar
-- |
-  ulimit -n 4096
-  stack --no-terminal --install-ghc $ARGS test --only-dependencies --fast
 script:
-- |
-  ulimit -n 4096
-  stack --no-terminal $ARGS test --ghc-options="-O0 -Wall -Werror"
+- docker build -t theftcomm .
+
+before_deploy:
+- docker run --rm -it -v $(pwd):/out theftcomm cp /usr/local/bin/theftcomm /out
+
+deploy:
+  provider: releases
+  api_key:
+    secure: JYJtLp6Au1bqxyWC0fsjucJOcBvITqSVdhEuJnGKyI1WE13TwCxykA6W8OnZ6jPeUq901gS0FN0stFUfgfRgpgEiF/1uu/9U/0s49SDciN2TmsW/z8IihMLk9C6jui/jUffLc7iQsmj9+YdgnYqX4ouA9e6dk59+5cQbZ+Qxnd7nOHHizq0C+KRwAYLLqsEYGNuFmJn1KsptfNQBU5s9VbrsCHW1yXaJAZLXJXy1JpkdbO80fFyOuZd483RunpFdHSsapRM8YU1nfWpRL9KBm6XWuB3rcaLsUI0odq8GcyFNkFycO3r2ENGdBsnMH55x55B7eEsFAYxSAGNHQF+EIQT8Av9NdKumctvamEnVx8FoddnP+1kOJFrq7/d1v7I7d7pbMByanXPFBE4WjR9JACmOqw0J99gjZwD249dB+ZGQnYuCOMSoNvfEN6j/d/hVEzDl3WRXssEhEJP1VK9WobqGNUMxipofq/VZoWURD78gtQCTATnUMzKAqlxfLk5gBBtK30AkF4iFcbmNPzV3h09T/ZmWctn7ixAYsj60ScHgMR1DZtf/L3M0wO8JALi8LchT3/hZGhoZxMcW1ITVghVciHXqenlq+e+qYGvdbDcg4PzXxRZd2b0Wo3GcC+EnVLnY6fObx35CmLK5nu/jxB/KhVlAts3RDaDfMlXr9Do=
+  file: theftcomm
+  skip_cleanup: true
+  on:
+    repo: mitsfs/theftcomm
+    tags: true
