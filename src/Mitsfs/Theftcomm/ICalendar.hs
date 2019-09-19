@@ -101,7 +101,7 @@ utcDebug = "'"
 
 getTZOffset :: BS.ByteString -> Text -> Day -> TimeZone
 getTZOffset content t d = let
-    vcal = either (error "Invalid VCalendar") id $ getICal content
+    vcal = either (\s -> error $ "Invalid VCalendar: " ++ s) id $ getICal content
     lt = LocalTime d midnight
     in fromMaybe (error "Invalid Date or TimeZone") $ vCalendarTZIDToOffsets vcal t lt
 
